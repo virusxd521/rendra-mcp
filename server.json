@@ -1,0 +1,41 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.virusxd521/rendra",
+  "title": "Rendra",
+  "description": "Read, write and keep HTML docs fresh in Rendra. Living sections show proof for every number.",
+  "websiteUrl": "https://www.rendra.design",
+  "repository": {
+    "url": "https://github.com/virusxd521/rendra-mcp",
+    "source": "github"
+  },
+  "version": "0.2.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "rendra-mcp",
+      "version": "0.2.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "RENDRA_API_TOKEN",
+          "description": "Rendra API token. Optional if you ran `rendra-mcp login`.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "RENDRA_API_TOKEN_RO",
+          "description": "Read-only token for resource reads (split-token mode).",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "RENDRA_API_URL",
+          "description": "Backend base URL. Default https://www.rendra.design",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
