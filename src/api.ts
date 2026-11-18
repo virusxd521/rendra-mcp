@@ -11,6 +11,11 @@ export type Config = {
   token: string;
 };
 
+/** Default time a call may take before it is aborted. */
+export const DEFAULT_TIMEOUT_MS = 60_000;
+/** The refresh route runs a model call; the backend allows 300 s. */
+export const REFRESH_TIMEOUT_MS = 310_000;
+
 export type RendraDocSummary = {
   slug: string;
   title: string;
@@ -37,6 +42,14 @@ export type RendraSectionFreshness = {
   lastCheckedAt: string | null;
   state: "fresh" | "stale" | "never" | "error";
   pendingProposals: number;
+  proof?: {
+    found: number;
+    notFound: number;
+    notFoundValues: string[];
+    truncated?: boolean;
+    label: string | null;
+    fetchedAt: string | null;
+  };
 };
 
 export type RendraDoc = RendraDocSummary & {
@@ -58,7 +71,12 @@ export class RendraApiError extends Error {
 export class RendraClient {
   constructor(private cfg: Config) {}
 
-  private async req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async req<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+  ): Promise<T> {
     const res = await fetch(`${this.cfg.baseUrl}${path}`, {
       method,
       headers: {
@@ -67,6 +85,7 @@ export class RendraClient {
         accept: "application/json",
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (res.status === 204) return undefined as T;
     const text = await res.text();
@@ -191,12 +210,13 @@ export class RendraClient {
       model?: string;
     } = {},
   ) {
-    return this.req<{ ok: true; proposal_id: number; summary: string }>(
+    return this.req<{ ok: true; proposal_id: number | null; summary: string }>(
       "POST",
       `/api/v1/documents/${encodeURIComponent(slug)}/sections/${encodeURIComponent(
         sectionId,
       )}/refresh`,
       input,
+      REFRESH_TIMEOUT_MS,
     );
   }
 

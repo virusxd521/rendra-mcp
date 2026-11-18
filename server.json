@@ -8,12 +8,12 @@
     "url": "https://github.com/virusxd521/rendra-mcp",
     "source": "github"
   },
-  "version": "0.2.1",
+  "version": "0.3.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "rendra-mcp",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "transport": {
         "type": "stdio"
       },
@@ -26,7 +26,7 @@
         },
         {
           "name": "RENDRA_API_TOKEN_RO",
-          "description": "Read-only token for resource reads (split-token mode).",
+          "description": "Read-only token. Set only this one (no RENDRA_API_TOKEN) for read-only mode.",
           "isRequired": false,
           "isSecret": true
         },

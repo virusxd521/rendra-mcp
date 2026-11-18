@@ -19,6 +19,7 @@ import { spawn } from "node:child_process";
 import { hostname, platform, arch } from "node:os";
 import { setTimeout as wait } from "node:timers/promises";
 import { RendraClient, RendraApiError } from "./api.js";
+import { apiBaseUrl, VERSION } from "./config.js";
 import {
   clearToken,
   getCredentialsPath,
@@ -26,14 +27,8 @@ import {
   writeToken,
 } from "./credentials.js";
 
-/** Keep in sync with package.json. Reported in client_meta. */
-const CLI_VERSION = "0.2.0";
-
-/** Default backend if RENDRA_API_URL is unset. */
-const DEFAULT_BASE_URL = "https://www.rendra.design";
-
 function defaultUrl(): string {
-  return process.env.RENDRA_API_URL ?? DEFAULT_BASE_URL;
+  return apiBaseUrl();
 }
 
 /** Self-reported identity shown verbatim on the authorize page. */
@@ -43,31 +38,50 @@ function clientIdentity() {
     meta: {
       platform: platform(),
       arch: arch(),
-      version: CLI_VERSION,
+      version: VERSION,
     },
   };
 }
 
 /**
+ * Only open a URL on the backend's own site, so a bad server response
+ * cannot make the CLI launch something else. Same origin, or https on the
+ * same host with or without "www." (the backend may link the apex domain).
+ */
+export function isSafeVerificationUrl(url: string, baseUrl: string): boolean {
+  try {
+    const u = new URL(url);
+    const b = new URL(baseUrl);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    if (u.origin === b.origin) return true;
+    const bare = (host: string) => host.toLowerCase().replace(/^www\./, "");
+    return u.protocol === "https:" && u.port === b.port && bare(u.hostname) === bare(b.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Best-effort browser open. We don't fail if `open`/`xdg-open`/`start`
- * aren't on PATH — the URL is also printed to stderr for the user to
+ * aren't on PATH. The URL is also printed to stderr for the user to
  * click manually, which is the only path that works for SSH sessions.
  */
 function openBrowser(url: string): void {
-  const cmd =
+  // `start` is a cmd builtin; "" is its window title; ^& keeps & in the URL.
+  const [cmd, args]: [string, string[]] =
     process.platform === "darwin"
-      ? "open"
+      ? ["open", [url]]
       : process.platform === "win32"
-        ? "start"
-        : "xdg-open";
+        ? ["cmd", ["/c", "start", "", url.replace(/&/g, "^&")]]
+        : ["xdg-open", [url]];
   try {
-    const child = spawn(cmd, [url], { detached: true, stdio: "ignore" });
+    const child = spawn(cmd, args, { detached: true, stdio: "ignore" });
     child.on("error", () => {
-      // Swallow — the URL was already printed for manual use.
+      // Swallow: the URL was already printed for manual use.
     });
     child.unref();
   } catch {
-    // Same — non-fatal.
+    // Same: non-fatal.
   }
 }
 
@@ -121,7 +135,11 @@ export async function login(): Promise<number> {
   process.stderr.write(`→ Opening ${init.verification_uri_complete}\n`);
   process.stderr.write(`  (or visit ${init.verification_uri} and enter code: ${init.user_code})\n\n`);
   process.stderr.write(`Waiting for approval (Ctrl-C to cancel)…\n`);
-  openBrowser(init.verification_uri_complete);
+  if (isSafeVerificationUrl(init.verification_uri_complete, baseUrl)) {
+    openBrowser(init.verification_uri_complete);
+  } else {
+    process.stderr.write(`  (not opened in the browser: it is not on ${baseUrl})\n`);
+  }
 
   // 2. Poll until approved / denied / expired.
   const intervalMs = init.interval * 1000;

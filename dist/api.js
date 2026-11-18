@@ -5,6 +5,10 @@
  * useful error message. No retry logic — agents that hit a transient
  * failure can call the tool again.
  */
+/** Default time a call may take before it is aborted. */
+export const DEFAULT_TIMEOUT_MS = 60_000;
+/** The refresh route runs a model call; the backend allows 300 s. */
+export const REFRESH_TIMEOUT_MS = 310_000;
 export class RendraApiError extends Error {
     status;
     details;
@@ -20,7 +24,7 @@ export class RendraClient {
     constructor(cfg) {
         this.cfg = cfg;
     }
-    async req(method, path, body) {
+    async req(method, path, body, timeoutMs = DEFAULT_TIMEOUT_MS) {
         const res = await fetch(`${this.cfg.baseUrl}${path}`, {
             method,
             headers: {
@@ -29,6 +33,7 @@ export class RendraClient {
                 accept: "application/json",
             },
             body: body !== undefined ? JSON.stringify(body) : undefined,
+            signal: AbortSignal.timeout(timeoutMs),
         });
         if (res.status === 204)
             return undefined;
@@ -100,7 +105,7 @@ export class RendraClient {
      * `model` to override the section's pinned model for this run only.
      */
     triggerSectionRefresh(slug, sectionId, input = {}) {
-        return this.req("POST", `/api/v1/documents/${encodeURIComponent(slug)}/sections/${encodeURIComponent(sectionId)}/refresh`, input);
+        return this.req("POST", `/api/v1/documents/${encodeURIComponent(slug)}/sections/${encodeURIComponent(sectionId)}/refresh`, input, REFRESH_TIMEOUT_MS);
     }
     getDocumentPdfUrl(slug) {
         return `${this.cfg.baseUrl}/api/v1/documents/${encodeURIComponent(slug)}/pdf`;

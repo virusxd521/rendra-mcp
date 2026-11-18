@@ -1,6 +1,6 @@
 {
   "name": "rendra-mcp",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "mcpName": "io.github.virusxd521/rendra",
   "description": "Model Context Protocol server for Rendra. Lets Claude, Cursor, and other MCP-compatible agents read and write docs in your Rendra workspace.",
   "type": "module",
@@ -20,15 +20,18 @@
     "dist",
     "skills",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
     "dev": "tsc -p tsconfig.json --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "npm run build && node --test test/server.test.mjs test/cli.test.mjs",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
